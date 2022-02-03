@@ -15,8 +15,8 @@ func main() {
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 
 		data := ViewData{
-			Title:   "Our dream cars",
-			Message: "Tesla will come",
+			Title:   "Manage cars",
+			Message: "Cars",
 		}
 		tmpl, _ := template.ParseFiles("templates/index.html")
 		err := tmpl.Execute(w, data)
