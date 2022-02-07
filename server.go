@@ -2,12 +2,14 @@ package main
 
 import (
 	"C_CRUD/models"
+	"encoding/json"
 	"fmt"
 	"github.com/caarlos0/env/v6"
 	"github.com/go-chi/chi/v5"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"html/template"
+	"io/ioutil"
 	"net/http"
 )
 
@@ -49,19 +51,32 @@ func main() {
 	//		return
 	//	}
 	//})
+
+	//ENV
+	cfg := Config{}
+	if err := env.Parse(&cfg); err != nil {
+		panic(err)
+	}
+
+	//GORM
+	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local", cfg.Login, cfg.Password, cfg.Host, cfg.Port, cfg.DB)
+	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
+	if err != nil {
+		return
+	}
+
+	cr := crud{
+		db:  db,
+		cfg: cfg,
+	}
+
 	r := chi.NewRouter()
-	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-		_, err := w.Write([]byte("welcome"))
-		if err != nil {
-			return
-		}
-	})
 	// RESTy routes for "articles" resource
 	r.Route("/api", func(r chi.Router) {
 		r.Route("/cars", func(r chi.Router) {
 			r.Get("/", listCars) // GET /api/cars index
 			//r.Post("/{id}", listCarByID) // POST /api/cars/{id} edit
-			//r.Post("/", createCar)       // POST /api/cars/ create
+			r.Post("/", cr.createCar) // POST /api/cars/ create
 			//r.Delete("/", deleteCar)     // /api/cars/{id} delete (form method delete)
 		})
 	})
@@ -99,30 +114,29 @@ func main() {
 	//
 	//})
 
-	//ENV
-	cfg := Config{}
-	if err := env.Parse(&cfg); err != nil {
-		panic(err)
-	}
-
-	//GORM
-	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local", cfg.Login, cfg.Password, cfg.Host, cfg.Port, cfg.DB)
-	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
-	if err != nil {
-		return
-	}
-
 	//Migration
 	if err = db.AutoMigrate(&models.Car{}); err != nil {
 		return
 	}
 
-	_ = crud{
-		db:  db,
-		cfg: cfg,
+	err = http.ListenAndServe(":8181", r)
+	if err != nil {
+		return
+	}
+}
+
+func (cr crud) createCar(w http.ResponseWriter, r *http.Request) {
+	requestBody, _ := ioutil.ReadAll(r.Body)
+	var car models.Car
+	err := json.Unmarshal(requestBody, &car)
+	if err != nil {
+		return
 	}
 
-	err = http.ListenAndServe(":8181", r)
+	cr.db.Create(&car)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	err = json.NewEncoder(w).Encode(&car)
 	if err != nil {
 		return
 	}
