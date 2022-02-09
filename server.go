@@ -74,9 +74,9 @@ func main() {
 	// RESTy routes for "articles" resource
 	r.Route("/api", func(r chi.Router) {
 		r.Route("/cars", func(r chi.Router) {
-			r.Get("/", listCars) // GET /api/cars index
-			//r.Post("/{id}", listCarByID) // POST /api/cars/{id} edit
-			r.Post("/", cr.createCar) // POST /api/cars/ create
+			r.Get("/", listCars)            // GET /api/cars index
+			r.Post("/{id}", cr.listCarByID) // POST /api/cars/{id} edit
+			r.Post("/", cr.createCar)       // POST /api/cars/ create
 			//r.Delete("/", deleteCar)     // /api/cars/{id} delete (form method delete)
 		})
 	})
@@ -120,6 +120,18 @@ func main() {
 	}
 
 	err = http.ListenAndServe(":8181", r)
+	if err != nil {
+		return
+	}
+}
+
+func (cr crud) listCarByID(w http.ResponseWriter, r *http.Request) {
+	key := chi.URLParam(r, "id")
+
+	var car models.Car
+	cr.db.First(&car, key)
+	w.Header().Set("Content-Type", "application/json")
+	err := json.NewEncoder(w).Encode(car)
 	if err != nil {
 		return
 	}
