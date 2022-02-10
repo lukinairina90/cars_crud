@@ -226,22 +226,33 @@ func (cr crud) listCars(w http.ResponseWriter, r *http.Request) {
 }
 
 func (cr crud) updateCarById(w http.ResponseWriter, r *http.Request) {
-	//key := chi.URLParam(r, "id")
+	id := chi.URLParam(r, "id")
 
 	requestBody, _ := ioutil.ReadAll(r.Body)
-	var car models.Car
+	var ca CarUpdate
 
-	logrus.WithField("updateCarById", car).Info("starting updateCarById")
+	logrus.WithField("updateCarById", ca).Info("starting updateCarById")
 
-	err := json.Unmarshal(requestBody, &car)
+	err := json.Unmarshal(requestBody, &ca)
 	if err != nil {
 		return
 	}
-	cr.db.Save(&car)
+
+	model := models.Car{
+		ModelName:    ca.ModelName,
+		Type:         ca.Type,
+		Transmission: ca.Transmission,
+		Engine:       ca.Engine,
+		HorsePower:   ca.HorsePower,
+	}
+
+	if err := cr.db.Where("id = ?", id).Updates(model); err == nil {
+		panic(err)
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	err = json.NewEncoder(w).Encode(car)
+	err = json.NewEncoder(w).Encode(ca)
 	if err != nil {
 		return
 	}

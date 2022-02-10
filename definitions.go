@@ -11,3 +11,11 @@ type Car struct {
 	Engine       string `json:"engine"`
 	HorsePower   string `json:"horse_power"`
 }
+
+type CarUpdate struct {
+	ModelName    string `json:"model_name"`
+	Type         string `json:"type"`
+	Transmission string `json:"transmission"`
+	Engine       string `json:"engine"`
+	HorsePower   string `json:"horse_power"`
+}
