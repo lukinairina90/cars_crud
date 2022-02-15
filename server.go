@@ -78,15 +78,7 @@ func main() {
 	})
 	r.Route("/cars", func(r chi.Router) {
 		r.Get("/", cr.webListCars)
-		r.Post("/", cr.webCreateCar)
-		r.Put("/{id}", cr.updateCarById)
-		r.Post("/{id}", cr.listCarByID)
-
 	})
-
-	//r.Route("/cars", func(r chi.Router) {
-	//	r.Get("/", webIndex) // GET /api/cars index
-	//})
 
 	//Migration
 	if err = db.AutoMigrate(&models.Car{}); err != nil {
@@ -144,19 +136,57 @@ func (cr crud) postCreateCar() models.Car {
 	return car
 }
 
-func (cr crud) createCar(w http.ResponseWriter, r *http.Request) {
-	car := cr.postCreateCar()
-	requestBody, _ := ioutil.ReadAll(r.Body)
-	err := json.Unmarshal(requestBody, &car)
+type CreateCarRequest struct {
+	ModelType    string `json:"model_type"`
+	Type         string `json:"type"`
+	Transmission string `json:"transmission"`
+	Engine       string `json:"engine"`
+	HorsePower   string `json:"horse_power"`
+}
+
+func (cr crud) createCar(response http.ResponseWriter, request *http.Request) {
+
+	b, err := ioutil.ReadAll(request.Body)
+	if err != nil {
+		response.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	req := CreateCarRequest{}
+	if err := json.Unmarshal(b, &req); err != nil {
+		response.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	car := models.Car{
+		ModelName:    req.ModelType,
+		Type:         req.Type,
+		Transmission: req.Transmission,
+		Engine:       req.Engine,
+		HorsePower:   req.HorsePower,
+	}
+
+	if err := cr.db.Create(&car).Error; err != nil {
+		response.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	if _, err := response.Write([]byte(`{"status": "success"}`)); err != nil {
+		response.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	response.WriteHeader(http.StatusOK)
+
+	//return
+
+	response.Header().Set("Content-Type", "application/json")
+	response.WriteHeader(http.StatusCreated)
+	err = json.NewEncoder(response).Encode(&car)
 	if err != nil {
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	err = json.NewEncoder(w).Encode(&car)
-	if err != nil {
-		return
-	}
+
 }
 
 func (cr crud) webCreateCar(w http.ResponseWriter, r *http.Request) {
