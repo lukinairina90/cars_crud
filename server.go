@@ -68,13 +68,11 @@ func main() {
 			r.Get("/", cr.listCars)
 			r.Post("/", cr.createCar)
 			r.Put("/{id:[0-9]+}", cr.updateCarById)
-			r.Get("/{id:[0-9]+}", cr.listCarByID)
+			r.Get("/{id:[0-9]+}", cr.getCarByID)
 			r.Delete("/{id:[0-9]+}", cr.deleteCar)
 		})
 	})
-	r.Route("/cars", func(r chi.Router) {
-		r.Get("/", cr.webListCars)
-	})
+	r.Get("/", cr.webListCars)
 
 	//Migration
 	if err = db.AutoMigrate(&models.Car{}); err != nil {
@@ -171,13 +169,25 @@ func (cr crud) createCar(response http.ResponseWriter, request *http.Request) {
 	}
 }
 
-func (cr crud) listCarByID(w http.ResponseWriter, r *http.Request) {
+func (cr crud) getCarByID(w http.ResponseWriter, r *http.Request) {
 	key := chi.URLParam(r, "id")
 
-	var car models.Car
-	cr.db.First(&car, key)
+	var carModel models.Car
+	if err := cr.db.First(&carModel, key).Error; err != nil {
+		panic(err) //ToDo: handle error!!!
+	}
+
+	carDef := Car{
+		ID:           carModel.ID,
+		ModelName:    carModel.ModelName,
+		Type:         carModel.Type,
+		Transmission: carModel.Transmission,
+		Engine:       carModel.Engine,
+		HorsePower:   carModel.HorsePower,
+	}
+
 	w.Header().Set("Content-Type", "application/json")
-	err := json.NewEncoder(w).Encode(car)
+	err := json.NewEncoder(w).Encode(carDef)
 	if err != nil {
 		return
 	}

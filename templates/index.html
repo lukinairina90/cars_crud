@@ -323,9 +323,27 @@
 
 
             $(".edit").on("click", function (e) {
+                e.preventDefault();
+
                 let id = $(this).data("id");
-                $("#edit-car").attr("data-id", id)
-            })
+
+                // set item id to the form in modal window.
+                $("#edit-car").attr("data-id", id);
+
+                $.ajax({
+                    method: "GET",
+                    url: "http://localhost:8181/api/cars/" + id,
+                    success: function (resp) {
+                        let form = $("#edit-car");
+
+                        form.find("input[name='model_name']").val(resp.model_name);
+                        form.find("input[name='type']").val(resp.model_type);
+                        form.find("input[name='transmission']").val(resp.transmission);
+                        form.find("input[name='engine']").val(resp.engine);
+                        form.find("input[name='horse_power']").val(resp.horse_power);
+                    },
+                });
+            });
 
             $("#edit-car").on("submit", function (e) {
                 console.log(e)
@@ -347,9 +365,7 @@
                 }).done(function () {
                     location.reload()
                 });
-
-
-            })
+            });
 
             function convertFormToJSON(form) {
                 return $(form)
@@ -399,7 +415,7 @@
                     <td>{{ .Engine }}</td>
                     <td>{{ .HorsePower }}</td>
                     <td>
-                        <a href="#editCarModal" data-id="{{ .ID }}" data-model="{{ .ModelName }}" class="edit" data-toggle="modal"><i
+                        <a href="#editCarModal" data-id="{{ .ID }}" class="edit" data-toggle="modal"><i
                                 class="material-icons"
                                 data-toggle="tooltip"
                                 title="Edit">&#xE254;</i></a>
