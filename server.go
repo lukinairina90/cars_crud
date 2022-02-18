@@ -65,14 +65,14 @@ func main() {
 	r := chi.NewRouter()
 	r.Route("/api", func(r chi.Router) {
 		r.Route("/cars", func(r chi.Router) {
-			r.Get("/", cr.listCars)
+			r.Get("/", cr.showCars)
 			r.Post("/", cr.createCar)
-			r.Put("/{id:[0-9]+}", cr.updateCarById)
-			r.Get("/{id:[0-9]+}", cr.getCarByID)
+			r.Put("/{id:[0-9]+}", cr.editCarById)
+			r.Get("/{id:[0-9]+}", cr.showCarByID)
 			r.Delete("/{id:[0-9]+}", cr.deleteCar)
 		})
 	})
-	r.Get("/", cr.webListCars)
+	r.Get("/", cr.webShowCars)
 
 	//Migration
 	if err = db.AutoMigrate(&models.Car{}); err != nil {
@@ -106,7 +106,7 @@ func (cr crud) getCarsList() []Car {
 	return carsResp
 }
 
-func (cr crud) webListCars(w http.ResponseWriter, r *http.Request) {
+func (cr crud) webShowCars(w http.ResponseWriter, r *http.Request) {
 	carsResp := cr.getCarsList()
 	tmpl, _ := template.ParseFiles("templates/index.html")
 	err := tmpl.Execute(w, carsResp)
@@ -115,7 +115,7 @@ func (cr crud) webListCars(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (cr crud) listCars(w http.ResponseWriter, r *http.Request) {
+func (cr crud) showCars(w http.ResponseWriter, r *http.Request) {
 	carsResp := cr.getCarsList()
 	w.Header().Set("Content-Type", "application/json")
 	err := json.NewEncoder(w).Encode(carsResp)
@@ -169,7 +169,7 @@ func (cr crud) createCar(response http.ResponseWriter, request *http.Request) {
 	}
 }
 
-func (cr crud) getCarByID(w http.ResponseWriter, r *http.Request) {
+func (cr crud) showCarByID(w http.ResponseWriter, r *http.Request) {
 	key := chi.URLParam(r, "id")
 
 	var carModel models.Car
@@ -193,13 +193,13 @@ func (cr crud) getCarByID(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (cr crud) updateCarById(w http.ResponseWriter, r *http.Request) {
+func (cr crud) editCarById(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 
 	requestBody, _ := ioutil.ReadAll(r.Body)
 	var ca CarUpdate
 
-	logrus.WithField("updateCarById", ca).Info("starting updateCarById")
+	logrus.WithField("editCarById", ca).Info("starting editCarById")
 
 	err := json.Unmarshal(requestBody, &ca)
 	if err != nil {
