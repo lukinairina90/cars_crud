@@ -1,4 +1,4 @@
-package main
+package configuration
 
 type Config struct {
 	Host     string `env:"HOST,required"`
