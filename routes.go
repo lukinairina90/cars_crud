@@ -1,11 +1,11 @@
-package routes
+package main
 
 import (
 	"C_CRUD/car"
 	"github.com/go-chi/chi/v5"
 )
 
-func InitRouter(carTransport *car.Transport) *chi.Mux {
+func initRouter(carTransport *car.Transport) *chi.Mux {
 	router := chi.NewRouter()
 
 	router.Route("/api", func(r chi.Router) {

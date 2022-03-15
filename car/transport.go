@@ -1,35 +1,51 @@
 package car
 
 import (
+	"C_CRUD/car/repositories"
 	"C_CRUD/configuration"
 	"C_CRUD/models"
 	"encoding/json"
 	"github.com/go-chi/chi/v5"
 	"github.com/sirupsen/logrus"
-	"gorm.io/gorm"
 	"html/template"
 	"io/ioutil"
 	"net/http"
 )
 
-func NewTransport(db *gorm.DB, cfg configuration.Config) *Transport {
+func NewTransport(carRepository *repositories.CarRepository, cfg configuration.Config) *Transport {
 	return &Transport{
-		db:  db,
-		cfg: cfg,
+		carRepository: carRepository,
+		cfg:           cfg,
 	}
 }
 
 type Transport struct {
-	db  *gorm.DB
-	cfg configuration.Config
+	carRepository *repositories.CarRepository
+	cfg           configuration.Config
 }
 
 func (t Transport) ShowCars(w http.ResponseWriter, r *http.Request) {
-	carsResp := t.getCarsList()
-	w.Header().Set("Content-Type", "application/json")
-	err := json.NewEncoder(w).Encode(carsResp)
+	carModels, err := t.carRepository.List()
 	if err != nil {
-		return
+		FireInternalServerError(w, "error getting cars list", err)
+	}
+
+	cars := make([]Car, 0, len(carModels))
+	for _, carModel := range carModels {
+		cars = append(cars, Car{
+			ID:           carModel.ID,
+			ModelName:    carModel.ModelName,
+			Type:         carModel.Type,
+			Transmission: carModel.Transmission,
+			Engine:       carModel.Engine,
+			HorsePower:   carModel.HorsePower,
+		})
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(cars); err != nil {
+		FireInternalServerError(w, "error encoding response", err)
 	}
 }
 
@@ -43,7 +59,6 @@ func (t Transport) ShowStaticSinglePageApplication(w http.ResponseWriter, r *htt
 }
 
 func (t Transport) CreateCar(response http.ResponseWriter, request *http.Request) {
-
 	b, err := ioutil.ReadAll(request.Body)
 	if err != nil {
 		response.WriteHeader(http.StatusInternalServerError)
@@ -107,7 +122,7 @@ func (t Transport) EditCarById(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 
 	requestBody, _ := ioutil.ReadAll(r.Body)
-	var ca CarUpdate
+	var ca UpdateCarRequest
 
 	logrus.WithField("editCarById", ca).Info("starting editCarById")
 
@@ -146,54 +161,20 @@ func (t Transport) DeleteCar(w http.ResponseWriter, r *http.Request) {
 		logrus.WithField("error", err).Error("error deleting car")
 	}
 
-	w.WriteHeader(http.StatusNoContent)
+	w.WriteHeader(http.StatusOK)
 }
 
-func (t Transport) getCarsList() []Car {
-	var carsModels []models.Car
-	t.db.Find(&carsModels)
-
-	logrus.WithField("ListCar", carsModels).Info("starting ListCar")
-
-	carsResp := make([]Car, 0, len(carsModels))
-	for _, carModel := range carsModels {
-		carsResp = append(carsResp, Car{
-			ID:           carModel.ID,
-			ModelName:    carModel.ModelName,
-			Type:         carModel.Type,
-			Transmission: carModel.Transmission,
-			Engine:       carModel.Engine,
-			HorsePower:   carModel.HorsePower,
-			//ModelInfo:    fmt.Sprintf("%s (%s)", carModel.ModelName, carModel.Type),
-		})
-	}
-	return carsResp
+type InternalServerError struct {
+	Message string `json:"message"`
+	Error   error  `json:"error"`
+	Code    int    `json:"code"`
 }
 
-type CreateCarRequest struct {
-	ModelType    string `json:"model_type"`
-	Type         string `json:"type"`
-	Transmission string `json:"transmission"`
-	Engine       string `json:"engine"`
-	HorsePower   string `json:"horse_power"`
-}
+func FireInternalServerError(w http.ResponseWriter, message string, error error) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusInternalServerError)
 
-type Car struct {
-	ID        uint   `json:"id"`
-	ModelName string `json:"model_name"`
-	Type      string `json:"model_type"`
+	ierr := InternalServerError{Message: message, Error: error, Code: http.StatusInternalServerError}
 
-	//ModelInfo    string `json:"model_info"` // ModelName (Type)
-
-	Transmission string `json:"transmission"`
-	Engine       string `json:"engine"`
-	HorsePower   string `json:"horse_power"`
-}
-
-type CarUpdate struct {
-	ModelName    string `json:"model_name"`
-	Type         string `json:"type"`
-	Transmission string `json:"transmission"`
-	Engine       string `json:"engine"`
-	HorsePower   string `json:"horse_power"`
+	json.NewEncoder(w).Encode(ierr)
 }

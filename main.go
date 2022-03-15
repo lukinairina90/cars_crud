@@ -2,9 +2,9 @@ package main
 
 import (
 	"C_CRUD/car"
+	"C_CRUD/car/repositories"
+	"C_CRUD/car/repositories/models"
 	"C_CRUD/configuration"
-	"C_CRUD/models"
-	"C_CRUD/routes"
 	"fmt"
 	"github.com/caarlos0/env/v6"
 	"gorm.io/driver/mysql"
@@ -26,14 +26,16 @@ func main() {
 		return
 	}
 
-	carTransport := car.NewTransport(db, cfg)
-
-	router := routes.InitRouter(carTransport)
-
 	// Run GORM auto migrations.
 	if err = db.AutoMigrate(&models.Car{}); err != nil {
 		return
 	}
+
+	carRepository := repositories.NewCarRepository(db)
+
+	carTransport := car.NewTransport(carRepository, cfg)
+
+	router := initRouter(carTransport)
 
 	err = http.ListenAndServe(":8181", router)
 	if err != nil {
